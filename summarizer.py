@@ -11,9 +11,9 @@ load_dotenv()
 class PDFSummarizer:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0.3,
-            google_api_key=os.getenv("GOOGLE_API_KEY")
+            model="gemini-2.5-flash",
+            temperature=0.4,
+            google_api_key=os.getenv("Google_API_KEY")
         )
 
         self.summary_prompts = {
@@ -22,6 +22,20 @@ class PDFSummarizer:
                 template="""
 Provide a brief, concise summary of the following text in 2-3 sentences.
 Focus on the main points and key takeaways.
+
+Text: {text}
+
+Brief Summary:"""
+            ),
+            'detailed': PromptTemplate(
+                input_variables=["text"],
+                template="""
+Provide a detailed summary of the following text.
+Include:
+- Main topics and themes
+- Key arguments or findings
+- Important details and examples
+- Conclusions or recommendations
 
 Text: {text}
 
