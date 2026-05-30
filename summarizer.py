@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from typing import List, Dict
 import time
 
@@ -71,13 +71,10 @@ Executive Summary:"""
         if summary_type not in self.summary_prompts:
             summary_type = 'detailed'
 
-        chain = LLMChain(
-            llm=self.llm,
-            prompt=self.summary_prompts[summary_type]
-        )
+        chain = self.summary_prompts[summary_type] | self.llm | StrOutputParser()
 
         try:
-            summary = chain.run(text=text)
+            summary = chain.invoke({"text": text})
             return summary
         except Exception as e:
             return f"Error generating summary: {str(e)}"
@@ -136,10 +133,10 @@ Section Summaries:
 Final Cohesive Summary:"""
         )
 
-        meta_chain = LLMChain(llm=self.llm, prompt=meta_prompt)
+        meta_chain = meta_prompt | self.llm | StrOutputParser()
 
         try:
-            final_summary = meta_chain.run(summaries=combined_text, summary_type=summary_type)
+            final_summary = meta_chain.invoke({"summaries": combined_text, "summary_type": summary_type})
             return final_summary
         except Exception as e:
             return f"Combined Summary:\n\n{combined_text}"
@@ -161,10 +158,10 @@ Text: {text}
 Document Analysis:"""
         )
 
-        analysis_chain = LLMChain(llm=self.llm, prompt=analysis_prompt)
+        analysis_chain = analysis_prompt | self.llm | StrOutputParser()
 
         try:
-            analysis = analysis_chain.run(text=text[:3000])
+            analysis = analysis_chain.invoke({"text": text[:3000]})
             return {'analysis': analysis, 'status': 'success'}
         except Exception as e:
             return {'analysis': f"Error analyzing document: {str(e)}", 'status': 'error'}
@@ -181,10 +178,10 @@ Text: {text}
 Key Quotes (one per line):"""
         )
 
-        quotes_chain = LLMChain(llm=self.llm, prompt=quotes_prompt)
+        quotes_chain = quotes_prompt | self.llm | StrOutputParser()
 
         try:
-            quotes_response = quotes_chain.run(text=text)
+            quotes_response = quotes_chain.invoke({"text": text})
             quotes = [quote.strip() for quote in quotes_response.split('\n') if quote.strip()]
             return quotes[:10]
         except Exception as e:
