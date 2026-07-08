@@ -1,6 +1,6 @@
 # 📄 PDF AI Summarizer
 
-A powerful Python application that uses **Google Gemini AI** to automatically summarize PDF documents. Upload any PDF and get intelligent, customizable summaries in multiple formats!
+A powerful Python application that uses **OpenRouter** (access to 300+ LLMs via an OpenAI-compatible API) to automatically summarize PDF documents. Upload any PDF and get intelligent, customizable summaries in multiple formats!
 
 ## ✨ What This Project Does
 
@@ -9,7 +9,7 @@ A powerful Python application that uses **Google Gemini AI** to automatically su
 - **Reads PDF Files**: Extracts all text from PDF documents automatically
 - **Cleans & Processes Text**: Removes unnecessary characters and formats text for analysis
 - **Splits into Chunks**: Breaks large documents into manageable pieces for the AI
-- **Generates Smart Summaries**: Uses Google Gemini AI to create summaries in different styles:
+- **Generates Smart Summaries**: Uses OpenRouter (OpenAI-compatible API) to create summaries in different styles:
   - **Brief**: Quick 2-3 sentence overview
   - **Detailed**: Comprehensive summary with key points, arguments, and conclusions
   - **Bullet Points**: Organized, easy-to-scan summary format
@@ -28,7 +28,7 @@ Perfect for students, professionals, researchers, and anyone who needs to quickl
 
 Before you start, make sure you have:
 - **Python 3.8 or higher** installed on your computer
-- A **Google Gemini API Key** (free tier available)
+- An **OpenRouter API Key** (get one at [openrouter.ai/keys](https://openrouter.ai/keys))
 
 ### Step 1: Clone the Repository
 
@@ -63,22 +63,22 @@ pip install -r requirements.txt
 
 **What gets installed:**
 - `streamlit` - Interactive web interface
-- `langchain` & `langchain-google-genai` - AI framework
+- `langchain` & `langchain-openai` - AI framework
 - `PyPDF2` - PDF text extraction
 - `python-dotenv` - Environment variable management
 - `pandas` - Data handling
 - `tiktoken` - Token counting
 
-### Step 4: Set Up Your Google Gemini API Key
+### Step 4: Set Up Your OpenRouter API Key
 
-1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
-2. Click "Create API Key"
+1. Go to [OpenRouter Keys](https://openrouter.ai/keys)
+2. Click "Create Key"
 3. Copy your API key
 
 Create a `.env` file in the project root directory:
 
 ```bash
-echo "GOOGLE_API_KEY=your_api_key_here" > .env
+echo "OPENROUTER_API_KEY=your_api_key_here" > .env
 ```
 
 Replace `your_api_key_here` with your actual API key.
@@ -129,7 +129,7 @@ This will open a browser window at `http://localhost:8501` where you can use the
 pdfsummarizer/
 ├── app.py                 # Main Streamlit web application
 ├── pdf_processor.py       # Handles PDF reading and text cleaning
-├── summarizer.py          # AI summarization logic using Google Gemini
+├── summarizer.py          # AI summarization logic using OpenRouter
 ├── utils.py              # Helper functions (validation, formatting, export)
 ├── requirements.txt      # Python dependencies
 ├── .env.example          # Example environment file
@@ -140,7 +140,7 @@ pdfsummarizer/
 
 - **app.py**: The main web interface. Handles file upload, displays UI, and coordinates the workflow
 - **pdf_processor.py**: Reads PDFs, extracts text, cleans it, and splits it into chunks
-- **summarizer.py**: Uses Google Gemini API to generate different types of summaries
+- **summarizer.py**: Uses the OpenRouter API to generate different types of summaries
 - **utils.py**: Helper functions for API validation, time estimation, and result formatting
 
 ---
@@ -158,7 +158,7 @@ Clean and normalize text
      ↓
 Split into manageable chunks (respecting token limits)
      ↓
-Send each chunk to Google Gemini AI
+Send each chunk to OpenRouter
      ↓
 Get individual summaries
      ↓
@@ -199,15 +199,15 @@ The app uses `tiktoken` to count tokens before sending text to the AI. This ensu
 
 - Your API key is stored locally in `.env` (never committed to git)
 - PDFs are processed locally; nothing is permanently stored
-- Summaries are generated server-side by Google Gemini
+- Summaries are generated server-side by OpenRouter
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "GOOGLE_API_KEY not found"
+### "OPENROUTER_API_KEY not found"
 - Make sure `.env` file exists in the project root
-- Verify the key is correctly set: `GOOGLE_API_KEY=your_actual_key`
+- Verify the key is correctly set: `OPENROUTER_API_KEY=your_actual_key`
 - Don't use quotes around the key in `.env`
 
 ### "Error extracting text from PDF"
@@ -278,7 +278,7 @@ For issues or questions:
 
 ## 🌟 Acknowledgments
 
-- **Google Gemini API** for powerful AI summarization
+- **OpenRouter** for powerful AI summarization
 - **Streamlit** for the beautiful web interface
 - **LangChain** for AI orchestration
 - **PyPDF2** for PDF processing

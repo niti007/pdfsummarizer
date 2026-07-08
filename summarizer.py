@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from typing import List, Dict
@@ -10,10 +10,15 @@ load_dotenv()
 
 class PDFSummarizer:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+        self.llm = ChatOpenAI(
+            model="openai/gpt-4.1-mini",
             temperature=0.3,
-            google_api_key=os.getenv("GOOGLE_API_KEY")
+            openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+            openai_api_base="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://github.com/niti007/pdfsummarizer",
+                "X-Title": "PDF Summarizer",
+            },
         )
 
         self.summary_prompts = {
