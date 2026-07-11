@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF AI Summarizer — Architecture</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f1117;
+    --bg2:       #181c27;
+    --bg3:       #1e2332;
+    --border:    rgba(255,255,255,0.08);
+    --border2:   rgba(255,255,255,0.14);
+    --text:      #e2e4ed;
+    --muted:     #7c8099;
+    --purple:    #8b7cf8;
+    --purple-bg: rgba(139,124,248,0.12);
+    --amber:     #f0a940;
+    --amber-bg:  rgba(240,169,64,0.12);
+    --teal:      #34c9a0;
+    --teal-bg:   rgba(52,201,160,0.12);
+    --coral:     #f07060;
+    --coral-bg:  rgba(240,112,96,0.12);
+    --gray:      #9ca0b0;
+    --gray-bg:   rgba(156,160,176,0.12);
+    --mono:      'JetBrains Mono', 'Fira Mono', monospace;
+    --sans:      'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px 60px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+  header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .legend {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 36px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
+
+  .diagram-wrap {
+    width: 100%;
+    max-width: 780px;
+  }
+
+  svg text { font-family: var(--sans); }
+
+  /* Node styles */
+  .node-purple rect { fill: var(--purple-bg); stroke: var(--purple); stroke-width: 1; }
+  .node-purple .label { fill: var(--purple); font-size: 13px; font-weight: 600; }
+  .node-purple .sublabel { fill: #a89ef8; font-size: 11px; }
+
+  .node-amber rect { fill: var(--amber-bg); stroke: var(--amber); stroke-width: 1; }
+  .node-amber .label { fill: var(--amber); font-size: 13px; font-weight: 600; }
+  .node-amber .sublabel { fill: #c9974a; font-size: 11px; }
+
+  .node-teal rect { fill: var(--teal-bg); stroke: var(--teal); stroke-width: 1; }
+  .node-teal .label { fill: var(--teal); font-size: 13px; font-weight: 600; }
+  .node-teal .sublabel { fill: #5ec9ad; font-size: 11px; }
+
+  .node-coral rect { fill: var(--coral-bg); stroke: var(--coral); stroke-width: 1; }
+  .node-coral .label { fill: var(--coral); font-size: 13px; font-weight: 600; }
+  .node-coral .sublabel { fill: #d4806f; font-size: 11px; }
+
+  .node-gray rect { fill: var(--gray-bg); stroke: var(--gray); stroke-width: 1; }
+  .node-gray .label { fill: var(--gray); font-size: 13px; font-weight: 600; }
+
+  .pydantic-badge rect { fill: rgba(255,255,255,0.04); stroke: rgba(255,255,255,0.12); stroke-width: 0.75; stroke-dasharray: 3 2; }
+  .pydantic-badge .key { fill: #7c8099; font-size: 10px; font-weight: 500; }
+  .pydantic-badge .val { font-size: 10px; font-weight: 600; }
+  .pydantic-badge .val-purple { fill: #a89ef8; }
+  .pydantic-badge .val-amber  { fill: #d4ac6a; }
+
+  .arr { stroke: rgba(255,255,255,0.22); stroke-width: 1; fill: none; }
+  .arr-label { fill: #5a5f78; font-size: 10px; }
+  .leader { stroke: rgba(255,255,255,0.12); stroke-width: 0.75; stroke-dasharray: 3 2; fill: none; }
+
+  .persist-bar rect { fill: rgba(156,160,176,0.07); stroke: rgba(156,160,176,0.2); stroke-width: 0.75; }
+  .persist-bar text { fill: var(--muted); font-size: 10.5px; }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text);
+    max-width: 260px;
+    line-height: 1.5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 99;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .tt-title { font-weight: 600; font-size: 12.5px; margin-bottom: 4px; }
+  .tooltip .tt-code { font-family: var(--mono); font-size: 10.5px; color: var(--muted); background: rgba(255,255,255,0.04); padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 3px; }
+
+  .clickable { cursor: pointer; }
+  .clickable rect { transition: filter 0.15s; }
+  .clickable:hover rect { filter: brightness(1.25); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PDF AI Summarizer</h1>
+  <p>Architecture diagram · hover nodes for detail · Streamlit + LangChain + OpenRouter</p>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#8b7cf8"></div>LLM call (OpenRouter)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f0a940"></div>Optional / sidebar toggle</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#34c9a0"></div>Data handling / I-O</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.08); border:1px dashed rgba(255,255,255,0.2)"></div>Config / schema badge</div>
+</div>
+
+<div class="diagram-wrap">
+<svg width="100%" viewBox="0 0 780 940" role="img">
+  <title>PDF AI Summarizer Architecture</title>
+  <desc>Flowchart of the Streamlit PDF summarizer showing upload, extraction, cleaning/chunking, optional document analysis, chunk summarization via OpenRouter, combination into a final summary, optional quote extraction, and export.</desc>
+
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="arr-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="rgba(240,112,96,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <!-- ── START ── -->
+  <g class="node-gray">
+    <rect x="300" y="16" width="180" height="34" rx="17"/>
+    <text class="label" x="390" y="37" text-anchor="middle">START</text>
+  </g>
+  <line x1="390" y1="50" x2="390" y2="80" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 1: upload_pdf -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-teal clickable" id="n-upload" data-tt="upload">
+    <rect x="200" y="80" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="103" text-anchor="middle">upload_pdf</text>
+    <text class="sublabel" x="390" y="120" text-anchor="middle">st.file_uploader() → get_pdf_metadata()</text>
+  </g>
+  <!-- metadata badge -->
+  <g class="pydantic-badge clickable" id="n-meta" data-tt="meta">
+    <rect x="595" y="82" width="170" height="52" rx="6"/>
+    <text class="key" x="605" y="96">PDF metadata dict</text>
+    <text class="val val-purple" x="605" y="112" style="font-family:monospace;font-size:10.5px">num_pages, title</text>
+    <text class="key" x="605" y="127">author · subject</text>
+  </g>
+  <line x1="580" y1="107" x2="595" y2="107" class="leader"/>
+
+  <line x1="390" y1="138" x2="390" y2="168" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 2: extract_text -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-teal clickable" id="n-extract" data-tt="extract">
+    <rect x="200" y="168" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="191" text-anchor="middle">extract_text_from_pdf</text>
+    <text class="sublabel" x="390" y="208" text-anchor="middle">PyPDF2.PdfReader → text per page, page-skip on error</text>
+  </g>
+
+  <line x1="390" y1="226" x2="390" y2="256" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 3: clean_and_chunk -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-teal clickable" id="n-chunk" data-tt="chunk">
+    <rect x="200" y="256" width="380" height="72" rx="8"/>
+    <text class="label" x="390" y="279" text-anchor="middle">clean_text · chunk_text</text>
+    <text class="sublabel" x="390" y="296" text-anchor="middle">Regex normalize whitespace/markers, strip junk chars</text>
+    <text class="sublabel" x="390" y="311" text-anchor="middle">tiktoken cl100k_base → sentence-aware chunks ≤ max_tokens</text>
+  </g>
+  <!-- chunk config badge -->
+  <g class="pydantic-badge clickable" id="n-chunkcfg" data-tt="chunkcfg">
+    <rect x="595" y="258" width="170" height="52" rx="6"/>
+    <text class="key" x="605" y="272">Sidebar setting</text>
+    <text class="val val-amber" x="605" y="288" style="font-family:monospace;font-size:10.5px">max_tokens: 8000</text>
+    <text class="key" x="605" y="303">range 4000–10000</text>
+  </g>
+  <line x1="580" y1="285" x2="595" y2="285" class="leader"/>
+
+  <line x1="390" y1="328" x2="390" y2="358" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 4: analyze_document_structure -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-amber clickable" id="n-analyze" data-tt="analyze">
+    <rect x="200" y="358" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="381" text-anchor="middle">analyze_document_structure</text>
+    <text class="sublabel" x="390" y="398" text-anchor="middle">Optional · gated by "Show Document Analysis" checkbox</text>
+  </g>
+
+  <line x1="390" y1="416" x2="390" y2="446" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 5: summarize_chunks -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-purple clickable" id="n-summarize" data-tt="summarize">
+    <rect x="200" y="446" width="380" height="70" rx="8"/>
+    <text class="label" x="390" y="468" text-anchor="middle">summarize_chunks</text>
+    <text class="sublabel" x="390" y="485" text-anchor="middle">Per-chunk prompt (brief/detailed/bullet/executive)</text>
+    <text class="sublabel" x="390" y="500" text-anchor="middle">→ ChatOpenAI via OpenRouter, 1s sleep between calls</text>
+  </g>
+  <!-- OpenRouter model badge -->
+  <g class="pydantic-badge clickable" id="n-llm" data-tt="llm">
+    <rect x="595" y="448" width="170" height="64" rx="6"/>
+    <text class="key" x="605" y="462">OpenRouter model</text>
+    <text class="val val-purple" x="605" y="478" style="font-family:monospace;font-size:10.5px">openai/gpt-4.1-mini</text>
+    <text class="key" x="605" y="492">temperature 0.3</text>
+    <text class="key" x="605" y="505">base: openrouter.ai/api/v1</text>
+  </g>
+  <line x1="580" y1="480" x2="595" y2="480" class="leader"/>
+
+  <line x1="390" y1="516" x2="390" y2="546" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 6: combine_summaries -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-purple clickable" id="n-combine" data-tt="combine">
+    <rect x="200" y="546" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="569" text-anchor="middle">combine_summaries</text>
+    <text class="sublabel" x="390" y="586" text-anchor="middle">Meta-prompt joins section summaries → one cohesive summary</text>
+  </g>
+
+  <line x1="390" y1="604" x2="390" y2="634" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 7: extract_key_quotes -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-amber clickable" id="n-quotes" data-tt="quotes">
+    <rect x="200" y="634" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="657" text-anchor="middle">extract_key_quotes</text>
+    <text class="sublabel" x="390" y="674" text-anchor="middle">Optional · gated by "Extract Key Quotes" checkbox, first 5000 chars</text>
+  </g>
+
+  <line x1="390" y1="692" x2="390" y2="722" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ─────────────────────────────────────────── -->
+  <!-- NODE 8: export_results -->
+  <!-- ─────────────────────────────────────────── -->
+  <g class="node-teal clickable" id="n-export" data-tt="export">
+    <rect x="200" y="722" width="380" height="58" rx="8"/>
+    <text class="label" x="390" y="745" text-anchor="middle">display_and_export</text>
+    <text class="sublabel" x="390" y="762" text-anchor="middle">format_summary_display() → download .txt summary / .csv stats</text>
+  </g>
+
+  <line x1="390" y1="780" x2="390" y2="810" class="arr" marker-end="url(#arr)"/>
+
+  <!-- ── END ── -->
+  <g class="node-gray">
+    <rect x="300" y="810" width="180" height="34" rx="17"/>
+    <text class="label" x="390" y="831" text-anchor="middle">END</text>
+  </g>
+
+  <!-- ── Persistence bar ── -->
+  <g class="persist-bar">
+    <rect x="30" y="874" width="720" height="30" rx="6"/>
+    <text x="390" y="893" text-anchor="middle">
+      🗄️  No persistent storage — results live only in st.session_state for the browser tab, nothing saved server-side
+    </text>
+  </g>
+
+  <!-- ── Shared session state sidebar (left) ── -->
+  <g class="pydantic-badge">
+    <rect x="14" y="80" width="170" height="128" rx="6"/>
+    <text class="key" x="24" y="96">st.session_state</text>
+    <text class="val val-purple" x="24" y="112" style="font-size:10px;font-family:monospace">pdf_processor</text>
+    <text class="val val-purple" x="24" y="126" style="font-size:10px;font-family:monospace">summarizer</text>
+    <text class="key" x="24" y="144">Instantiated once per</text>
+    <text class="key" x="24" y="158">browser session, reused</text>
+    <text class="key" x="24" y="172">across every processing</text>
+    <text class="key" x="24" y="186" style="font-style:italic">step in the pipeline</text>
+  </g>
+  <line x1="184" y1="144" x2="200" y2="144" class="leader"/>
+
+</svg>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip">
+  <div class="tt-title" id="tt-title"></div>
+  <div id="tt-body"></div>
+</div>
+
+<script>
+const tips = {
+  upload: {
+    title: 'upload_pdf',
+    body: 'Streamlit <span class="tt-code">st.file_uploader(type="pdf")</span>. On upload, calls <span class="tt-code">get_pdf_metadata()</span> which wraps PyPDF2 to pull page count, title, author, subject.'
+  },
+  meta: {
+    title: 'PDF metadata dict',
+    body: 'Returned by <span class="tt-code">get_pdf_metadata()</span>: <span class="tt-code">num_pages</span>, <span class="tt-code">title</span>, <span class="tt-code">author</span>, <span class="tt-code">subject</span> — falls back to "Unknown" if a field or the PDF metadata block is missing.'
+  },
+  extract: {
+    title: 'extract_text_from_pdf',
+    body: '<span class="tt-code">PyPDF2.PdfReader</span> loops every page calling <span class="tt-code">page.extract_text()</span>, prefixing each with a "--- Page N ---" marker. A per-page try/except means one bad page is skipped, not fatal.'
+  },
+  chunk: {
+    title: 'clean_text · chunk_text',
+    body: '<span class="tt-code">clean_text()</span> uses regex to collapse whitespace, strip page markers, and drop non-standard characters. <span class="tt-code">chunk_text()</span> splits on ". " and packs sentences into chunks under the token limit, measured via <span class="tt-code">tiktoken.get_encoding("cl100k_base")</span>.'
+  },
+  chunkcfg: {
+    title: 'Max Tokens per Chunk',
+    body: 'Sidebar slider bound to <span class="tt-code">max_tokens</span>, default 8000, range 4000–10000. Passed straight into <span class="tt-code">chunk_text(clean_text, max_tokens)</span>.'
+  },
+  analyze: {
+    title: 'analyze_document_structure',
+    body: 'Only runs if the "Show Document Analysis" sidebar checkbox is on. Sends the first 3000 characters through a prompt asking for document type, main topics, key sections, audience, and purpose.'
+  },
+  summarize: {
+    title: 'summarize_chunks',
+    body: 'Iterates every chunk, calling <span class="tt-code">summarize_text()</span> for the chosen style (brief/detailed/bullet_points/executive) via a LangChain <span class="tt-code">PromptTemplate | llm | StrOutputParser</span> chain. Sleeps 1s between calls for basic rate-limit control.'
+  },
+  llm: {
+    title: 'ChatOpenAI via OpenRouter',
+    body: 'Configured as <span class="tt-code">model="openai/gpt-4.1-mini"</span>, <span class="tt-code">temperature=0.3</span>, pointed at <span class="tt-code">https://openrouter.ai/api/v1</span> using <span class="tt-code">OPENROUTER_API_KEY</span>. Despite the README, the code path uses OpenRouter, not Gemini directly.'
+  },
+  combine: {
+    title: 'combine_summaries',
+    body: 'Joins all successful chunk summaries into one block, then runs a second meta-prompt asking the model to synthesize a single cohesive <span class="tt-code">combined_summary</span>. Falls back to the raw joined text if this call errors.'
+  },
+  quotes: {
+    title: 'extract_key_quotes',
+    body: 'Only runs if "Extract Key Quotes" is checked. Sends the first 5000 characters of the cleaned text and asks for 5–10 key quotes, one per line, capped at 10.'
+  },
+  export: {
+    title: 'display_and_export',
+    body: '<span class="tt-code">format_summary_display()</span> renders metrics and the final summary in the UI. <span class="tt-code">export_summary_to_text()</span> and a pandas <span class="tt-code">DataFrame</span> back the two download buttons: a .txt summary report and a .csv of per-chunk stats.'
+  }
+};
+
+const tt = document.getElementById('tooltip');
+const ttTitle = document.getElementById('tt-title');
+const ttBody = document.getElementById('tt-body');
+
+document.querySelectorAll('[data-tt]').forEach(el => {
+  el.addEventListener('mouseenter', e => {
+    const key = el.dataset.tt;
+    if (!tips[key]) return;
+    ttTitle.textContent = tips[key].title;
+    ttBody.innerHTML = tips[key].body;
+    tt.classList.add('show');
+  });
+  el.addEventListener('mousemove', e => {
+    tt.style.left = (e.clientX + 14) + 'px';
+    tt.style.top  = (e.clientY + 14) + 'px';
+  });
+  el.addEventListener('mouseleave', () => tt.classList.remove('show'));
+});
+</script>
+</body>
+</html>
