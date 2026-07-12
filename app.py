@@ -22,7 +22,7 @@ st.set_page_config(
 
 def main():
     st.title("📄 PDF Reader + AI Summarizer")
-    st.markdown("Upload a PDF document and get intelligent summaries powered by Google Gemini API.")
+    st.markdown("Upload a PDF document and get intelligent summaries powered by OpenRouter.")
 
     # Validate API key
     if not validate_api_key():
