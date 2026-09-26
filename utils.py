@@ -86,17 +86,17 @@ def estimate_processing_time(num_chunks: int) -> str:
 def validate_api_key() -> bool:
     """Validate that the API key is set"""
     load_dotenv()
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
-        st.error("❌ OpenRouter API key not found! Please check your .env file.")
+        st.error("❌ OpenAI API key not found! Please check your .env file.")
         st.info("1. Create a .env file in your project directory")
-        st.info("2. Add: OPENROUTER_API_KEY=your_api_key_here")
-        st.info("3. Get your API key from: https://openrouter.ai/keys")
+        st.info("2. Add: OPENAI_API_KEY=your_api_key_here")
+        st.info("3. Get your API key from: https://platform.openai.com/api-keys")
         return False
-    elif len(api_key) < 30:
+    elif len(api_key) < 20:
         st.error("❌ API key seems invalid. Please check if it's complete.")
         return False
     else:
-        st.success("✅ API key loaded successfully!")
+        st.success("✅ OpenAI API key loaded successfully!")
         return True
