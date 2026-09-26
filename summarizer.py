@@ -11,14 +11,9 @@ load_dotenv()
 class PDFSummarizer:
     def __init__(self):
         self.llm = ChatOpenAI(
-            model="openai/gpt-4.1-mini",
+            model="gpt-4o-mini",
             temperature=0.3,
-            openai_api_key=os.getenv("OPENROUTER_API_KEY"),
-            openai_api_base="https://openrouter.ai/api/v1",
-            default_headers={
-                "HTTP-Referer": "https://github.com/niti007/pdfsummarizer",
-                "X-Title": "PDF Summarizer",
-            },
+            api_key=os.getenv("OPENAI_API_KEY"),
         )
 
         self.summary_prompts = {
